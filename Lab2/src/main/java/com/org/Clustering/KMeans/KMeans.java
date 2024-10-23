@@ -1,4 +1,4 @@
-package com.org.Clustering.Kmeans;
+package com.org.Clustering.KMeans;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataOutputStream;
