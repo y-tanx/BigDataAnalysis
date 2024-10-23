@@ -45,7 +45,7 @@ public class RatingImputation {
          * @param value 输入的文本行
          * @param context MapReduce的上下文
          * @throws IOException 文件IO时可能出现的异常
-         * @throws InterruptedException MapReduce任务中断时抛出的异常*
+         * @throws InterruptedException MapReduce任务中断时抛出的异常
          */
         protected void map(LongWritable key, Text value, Context context) throws IOException, InterruptedException {
             String line = value.toString();
