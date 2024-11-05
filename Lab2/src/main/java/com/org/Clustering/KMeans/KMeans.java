@@ -26,8 +26,8 @@ public class KMeans {
     /**
      * KMeansMapper类：重新划分类别，输出每个记录和它所属于的类别序号
      */
-    public static class KMeansMapper extends Mapper<LongWritable, Text, Text, IntWritable> {
-        List<double[]> centroids;
+    public static class KMeansMapper extends Mapper<LongWritable, Text, LongWritable, RecordClusteridWritable> {
+        private List<double[]> centroids;
 
         /**
          * 读取广播的中心点数据，初始化列表centroids
@@ -80,7 +80,7 @@ public class KMeans {
                 throw new RuntimeException("CLuster ID not found");
             }
             // 输出<记录，记录所属类别>键值对
-            context.write(new Text(line), new IntWritable(clusterID));
+            context.write(key, new RecordClusteridWritable(line, clusterID));
         }
 
         /**
@@ -119,9 +119,9 @@ public class KMeans {
         }
     }
 
-    public static class KMeansReducer extends Reducer<Text, IntWritable, LongWritable, IntWritable> {
+    public static class KMeansReducer extends Reducer<LongWritable, RecordClusteridWritable, LongWritable, IntWritable> {
         private List<double[]> centroids;
-        private HashMap<Integer, SumNumWritable> clusterMap;
+        private HashMap<Integer, ClusterSumNum> clusterMap;
         private long lineNumber = 1;
 
         /**
@@ -160,38 +160,31 @@ public class KMeans {
          * @throws IOException 文件IO可能抛出的异常
          * @throws InterruptedException MapReduce任务中断抛出的异常
          */
-        protected void reduce(Text key, Iterable<IntWritable> values, Context context) throws IOException, InterruptedException {
-            // 获得记录的字段数组
-            String[] fields = key.toString().split(",");
-            double[] record = new double[row];
-            for(int i = 0; i < row; ++i)
-            {
-                record[i] = Double.parseDouble(fields[i]);
+        protected void reduce(LongWritable key, Iterable<RecordClusteridWritable> values, Context context) throws IOException, InterruptedException {
+            // 获取RecordClusteridWritable对象
+            for(RecordClusteridWritable recordClusterid : values){
+                String line = recordClusterid.getRecord();
+                int clusterID = recordClusterid.getClusterID();
+                // 获得记录的字段数组
+                String[] fields = line.toString().split(",");
+                double[] record = new double[row];
+                for(int i = 0; i < row; ++i)
+                {
+                    record[i] = Double.parseDouble(fields[i]);
+                }
+
+                // 更新记录所属类别的记录数和列和
+                ClusterSumNum clusterSumNum = clusterMap.getOrDefault(clusterID, new ClusterSumNum(0, new double[row]));
+                ClusterSumNum addSumNum = new ClusterSumNum(1, record);
+                clusterSumNum.merge(addSumNum);
+
+                // 更新哈希表
+                clusterMap.put(clusterID, clusterSumNum);
+
+                // 输出<行号，所属类别>
+                context.write(new LongWritable(lineNumber), new IntWritable(clusterID));
+                lineNumber++;
             }
-
-            // 从values中获得记录所属的类别
-            Integer clusterID = null;
-            Iterator<IntWritable> iter = values.iterator();
-            if(iter.hasNext())
-            {
-                clusterID = iter.next().get();
-            }
-            if(clusterID == null)
-            {
-                throw new RuntimeException("ClusterID is null");
-            }
-
-            // 更新记录所属类别的记录数和列和
-            SumNumWritable clusterSumNum = clusterMap.getOrDefault(clusterID, new SumNumWritable(0, new double[row]));
-            SumNumWritable addSumNum = new SumNumWritable(1, record);
-            clusterSumNum.merge(addSumNum);
-
-            // 更新哈希表
-            clusterMap.put(clusterID, clusterSumNum);
-
-            // 输出<行号，所属类别>
-            context.write(new LongWritable(lineNumber), new IntWritable(clusterID));
-            lineNumber++;
         }
 
         /**
@@ -210,7 +203,7 @@ public class KMeans {
             Collections.sort(sortedKeys);
             for(Integer clusterID : sortedKeys){
                 // 获得类别clusterID的记录数与列和
-                SumNumWritable clusterSumNum = clusterMap.get(clusterID);
+                ClusterSumNum clusterSumNum = clusterMap.get(clusterID);
                 double[] clusterSum = clusterSumNum.getSum();
                 int clusterNum = clusterSumNum.getNum();
 
@@ -247,6 +240,7 @@ public class KMeans {
             System.out.println(centroidsDistance);
             System.out.println("=====================");
             System.out.println("\n");
+            Thread.sleep(1000);
 
             // 距离与delta进行比较，判断是否需要继续循环更新中心点
             if(centroidsDistance < delta)
@@ -377,8 +371,8 @@ public class KMeans {
             job.setReducerClass(KMeans.KMeansReducer.class);
 
             // 指定maptask输出类型
-            job.setMapOutputKeyClass(Text.class);
-            job.setMapOutputValueClass(IntWritable.class);
+            job.setMapOutputKeyClass(LongWritable.class);
+            job.setMapOutputValueClass(RecordClusteridWritable.class);
 
             // 指定reducetask输出类型
             job.setOutputKeyClass(LongWritable.class);
