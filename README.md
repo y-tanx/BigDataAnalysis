@@ -5,7 +5,7 @@
 
 开发环境：Ubuntu22.04 Hadoop伪分布式
 
-开发语言：Java
+开发语言：Java8
 
 + lab1：数据预处理
 + lab2：分类和聚类
@@ -17,7 +17,7 @@
 
 开发环境：Ubuntu22.04 Spark Standalone + HDFS
 
-开发语言：Java
+开发语言：Java8
 
 本实验使用3个虚拟机搭建集群，实现Spark Standalone**计算框架** + HDFS **分布式文件系统**。这需要搭建Spark集群 和 Hadoop完全分布式集群，计算框架使用Spark，文件系统使用HDFS。3台主机在Spark集群和Hadoop集群的角色如下所示：
 
