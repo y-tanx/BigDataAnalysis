@@ -29,7 +29,7 @@
 
 在启动集群时，先启动HDFS文件系统：`start-dfs.sh`，再启动Spark集群：`start-all.sh`
 
-大作业的数据来源：https://archive.ics.uci.edu/datasets/，这里包含了很多经典的数据集
+大作业的数据来源：https://archive.ics.uci.edu/datasets/
 
 可以考虑使用PySpark，Python数据分析更方便
 
